@@ -1,4 +1,4 @@
-# Title: Impact of Affordable Care Act Medicaid Expansion on Marriage and Divorce in the United States
+#  Impact of Affordable Care Act Medicaid Expansion on Marriage and Divorce in the United States
 
 
 
