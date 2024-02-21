@@ -1,0 +1,406 @@
+---
+title: "Term paper - Empirical industrial economics"
+author: "Coraline Best"
+date: "2023-02-21"
+output: pdf_document
+---
+
+# Part 1: Cleaning of the datasets
+
+***1) Cleaning of the economic characteristics dataset***
+
+```{r setup, include=FALSE}
+#Loading packages
+library(pacman)
+p_load(tidyverse, data.table, broom, parallel, here, plotly, ggplot2, stargazer, magrittr,skimr,janitor,  tidymodels, ADAPTS, caret, yardstick, rlang, parsnip, sandwich, lmtest, haven, tinytex, rdrobust,dplyr, plotrix, plyr,readxl, usmap, stringr, finalfit, scales,tidyr, gridExtra, patchwork, EventStudy, fixest,kableExtra,wesanderson, gtsummary)
+
+#Setting directory
+setwd("/Users/coraline/Desktop/Econometrics project")
+
+#Importation of the different datasets of Economic characteristics from 2010 to 2017
+files_e<- c("2010.SelectedEconomicCharacteristics.xlsx","2011.SelectedEconomicCharacteristics.xlsx", "2012.SelectedEconomicCharacteristics.xlsx","2013.SelectedEconomicCharacteristics.xlsx", "2014.SelectedEconomicCharacteristics.xlsx", "2015.SelectedEconomicCharacteristics.xlsx","2016.SelectedEconomicCharacteristics.xlsx", "2017.SelectedEconomicCharacteristics.xlsx" )
+
+#Assign names to the datasets:
+names<-c("e2010","e2011","e2012","e2013","e2014","e2015","e2016","e2017")
+
+#open all the datasets using a loop
+for (i in seq_along(files_e)) {
+  assign(names[i], read_excel(path = files_e[i], sheet=2 ))
+}
+
+
+#merging all the dataset
+economic_cha<- cbind.data.frame(e2010,e2011,e2012,e2013,e2014,e2015,e2016,e2017)
+
+#keeping the variable we need
+economic_cha  <- economic_cha[c(6,7, 58:68),]
+
+#transposing data
+economic_cha <- data.frame(t(economic_cha), stringsAsFactors=FALSE)
+names(economic_cha) <- economic_cha[1,]
+economic_cha<- economic_cha[-1,]
+economic_cha  <- economic_cha[-c(53,106,159,212,265,318,371),]
+
+
+#adding year in each dataframe
+economic_cha$year<- c(rep(2010:2017,each=52,length.out=416))
+
+
+#creation of state variable
+state<-c("alabama","alaska", "arizona", "arkansas","california","colorado","connecticut","delaware","district of columbia","florida", "georgia","hawaii" ,"idaho","illinois", "indiana","iowa","kansas","kentucky","louisiana","maine","maryland", "massachusetts","michigan", "minnesota","mississippi","missouri","montana","nebraska","nevada","new hampshire","new jersey","new mexico","new york","north carolina", "north dakota","ohio","oklahoma", 
+"oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","vermont", "virginia","washington", "west virginia","wisconsin" ,"wyoming","puerto rico" )
+
+economic_cha <- cbind(economic_cha,state)
+
+#dropping the state which are not in abortion_dataset
+economic_cha<-subset(economic_cha, state!="district of columbia" & state!="puerto rico")
+
+#dropping character space and percentage
+economic_cha[,c(1:13)] <- lapply(economic_cha[,c(1:13)], str_replace_all, pattern =  "\\s+", replacement ="")
+economic_cha[,c(1:13)] <- lapply(economic_cha[,c(1:13)], str_replace_all, pattern = "%", replacement ="")
+
+#create a dataframe of our variables
+economic_cha<-data.frame(economic_cha)
+
+#changing all variable in numeric
+economic_cha[,c(1:13)] <- sapply(economic_cha[,c(1:13)], as.numeric)
+
+#renaming all the variable
+new_name <- c("eco_empl", "eco_unempl","total_household","eco_inc_h1","eco_inc_h2","eco_inc_h3","eco_inc_h4","eco_inc_h5","eco_inc_h6","eco_inc_h7","eco_inc_h8","eco_inc_h9","eco_inc_h10")
+economic_cha<- economic_cha %>% rename_at(1:13,~new_name)
+
+```
+
+***2) Cleaning of the individual characteristics dataset:***
+```{r}
+#Setting directory
+setwd("/Users/coraline/Desktop/Econometrics project")
+
+#Importing dataset individual characteristics
+files_i<- c("2010.SelectedIndividualCharacteristics.xlsx","2011.SelectedIndividualCharacteristics.xlsx", "2012.SelectedIndividualCharacteristics.xlsx","2013.SelectedIndividualCharacteristics.xlsx","2014.SelectedIndividualCharacteristics.xlsx", "2015.SelectedIndividualCharacteristics.xlsx", "2016.SelectedIndividualCharacteristics.xlsx", "2017.SelectedIndividualCharacteristics.xlsx")
+
+names<-c("i2010","i2011","i2012","i2013","i2014","i2015","i2016","i2017")
+
+#open all the datasets using a loop
+for (i in seq_along(files_i)) {
+  assign(names[i], read_excel(path = files_i[i], sheet=2 ))
+}
+
+
+#merging all the datasets
+individual_cha<- cbind.data.frame(i2010,i2011,i2012,i2013,i2014,i2015,i2016,i2017)
+
+#transposing data
+individual_cha <- data.frame(t(individual_cha), stringsAsFactors=FALSE)
+names(individual_cha) <- individual_cha[1,]
+individual_cha<- individual_cha[-1,]
+individual_cha  <- individual_cha[-c(53,106,159,212,265,318,371),]
+
+#adding year in the dataset
+individual_cha$year<-c(rep(2010:2017,each=52,length.out=416))
+
+#selecting variables
+individual_cha <-select(individual_cha,"White","Black or African American", "Asian","Hispanic or Latino origin (of any race)", "Never married","Now married, except separated","Divorced or separated","Widowed", "High school graduate (includes equivalency)", "Some college or associate's degree","Bachelor's degree","Graduate or professional degree","Married-couple family","Median Household income (dollars)","year")
+
+#creation of state variable
+state<-c("alabama","alaska", "arizona", "arkansas","california","colorado","connecticut","delaware","district of columbia","florida", "georgia","hawaii" ,"idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","maine","maryland", "massachusetts","michigan","minnesota","mississippi","missouri","montana","nebraska","nevada","new hampshire","new jersey","new mexico","new york","north carolina", "north dakota","ohio","oklahoma", "oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas", "utah","vermont", "virginia","washington", "west virginia","wisconsin" ,"wyoming","puerto rico" )
+
+individual_cha <- cbind(individual_cha,state)
+
+#dropping the state which are not in abortion_dataset
+individual_cha<-subset(individual_cha, state!="district of columbia" & state!="puerto rico")
+
+#dropping character
+individual_cha[,c(1:14)] <- lapply(individual_cha[,c(1:14)], str_replace_all, pattern =  "\\s+", replacement ="")
+individual_cha[,c(1:14)] <- lapply(individual_cha[,c(1:14)], str_replace_all, pattern = "%", replacement ="")
+
+#creation of a dataframe
+individual_cha<-data.frame(individual_cha)
+
+#changing all variable in numerics
+individual_cha[,c(1:14)] <- sapply(individual_cha[,c(1:14)], as.numeric) 
+
+#rename variables
+new_name <- c("ind_eth_w","ind_eth_b","ind_eth_a","ind_eth_h","never_married","married", "divorced", "widowed","ind_educ_h","ind_educ_c","ind_educ_b","ind_educ_g","poverty_rate_mariedcouple","median_household_income")
+
+individual_cha<- individual_cha %>% rename_at(1:14,~new_name)
+
+
+```
+***3) Merging the datasets all together***
+```{r}
+#Merging economic_cha and individual_cha
+data <- merge(individual_cha,economic_cha,by=c("year","state"))
+
+#organise rows
+data<-data %>% arrange(state)
+
+
+#label variable
+attributes(data$ind_eth_w)$label <- c("Ethnicity: white")
+attributes(data$ind_eth_b)$label <- c(" Ehnicity: black or african american")
+attributes(data$ind_eth_a)$label <- c(" Ethnicity: asian")
+attributes(data$ind_eth_h)$label <- c("Ethnicity: hispanic of latino")
+attributes(data$never_married)$label <- c("Marital status: never married ")
+attributes(data$married)$label <- c("Marital status:  married ")
+attributes(data$divorced)$label <- c("Marital status: divorced or separated ")
+attributes(data$widowed)$label <- c("Marital status: widowed ")
+attributes(data$ind_educ_h)$label <- c("Level of education: High school graduate ")
+attributes(data$ind_educ_c)$label <- c("Level of education: Some college or associate's degree ")
+attributes(data$ind_educ_b)$label <- c("Level of education: Bachelor's degree ")
+attributes(data$ind_educ_g)$label <- c("Level of education: Graduate or professional degree ")
+attributes(data$poverty_rate_mariedcouple)$label<- c("Poverty rate for married couple family")
+attributes(data$median_household_income)$label<- c("Median income household (dollars)")
+attributes(data$eco_empl)$label <- c("Employment")
+attributes(data$eco_unempl)$label <- c("Unemployment")
+attributes(data$total_household)$label<- c("Total household")
+attributes(data$eco_inc_h1)$label <- c(" Household Income less than $10,000")
+attributes(data$eco_inc_h2)$label<- c("Household Income between $10,000 to $14,999")
+attributes(data$eco_inc_h3)$label<- c(" Household Income between $15,000 to $24,999")
+attributes(data$eco_inc_h4)$label<- c(" Household Income between $25,000 to $34,999")
+attributes(data$eco_inc_h5)$label<- c("Household Income between $35,000 to $49,999")
+attributes(data$eco_inc_h6)$label<- c("Household Income between $50,000 to $74,999 ")
+attributes(data$eco_inc_h7)$label<- c("Household Income between $75,000 to $99,999")
+attributes(data$eco_inc_h8)$label<- c("Household income between $100,000 to $149,999")
+attributes(data$eco_inc_h9)$label<- c("Household income between $150,000 to $199,999 ")
+attributes(data$eco_inc_h10)$label<- c("Household income $200,000 or more")
+
+#compution of the characteristics by women
+data <- data%>% mutate_at(vars(ind_eth_w,ind_eth_b,ind_eth_a,ind_eth_h, married, divorced),list(ind_educ_h = ~.*data$ind_educ_h /100))
+
+
+#Checking for missing values 
+skim(data)
+
+```
+***3) Creating variables for diff-in-diff design:***
+
+```{r}
+#Creation of variables for the diff-in-diff
+
+#creation: treatment variable
+summary(data$treatment)
+data$treatment <- ifelse((data$state %in% c("alaska", "connecticut", "californie","illinois", "massachusetts","maryland","minnesota","hawaii", "new jersey","new york", "montana","new mexico", "oregon", "vermont","west virginia", "washington")),1,0)
+
+summary(data$treatment)
+data$treatment_ <- ifelse((data$state %in% c("alaska", "connecticut", "californie","illinois",  "massachusetts","maryland","minnesota","hawaii", 
+"new jersey","new york", "montana","new mexico", "oregon", "vermont","west virginia", "washington")),"Treated","Controlled")
+
+#creation: the post variable
+summary(data$post)
+data$post = ifelse(data$year >= 2015, 1,0)
+data$post_ = ifelse(data$year >= 2015, "After","Before")
+summary(data$post)
+
+#keeping variables for the diff-in-diff dataset
+data_did <-select(data,"state", "year","married","post","treatment", "divorced")
+```
+
+
+# Part 2: Parallel trends and descriptive statistics
+
+***1) Descriptive statistics***
+
+```{r}
+#Summary statistic table 
+
+summarystat_2= data %>% select(never_married, married, divorced, ind_eth_w, ind_eth_b, ind_eth_a, ind_eth_h, ind_educ_g, eco_empl, poverty_rate_mariedcouple, eco_unempl,treatment_, median_household_income ) 
+
+table_2= tbl_summary(summarystat_2,
+                     by= treatment_ ,
+                     statistic = list(all_continuous() ~ "{mean} ({sd})") , missing = "no", digits = all_continuous() ~ 2,)%>%
+  add_n()%>%
+  modify_header(label="**Variable**")%>%
+  modify_caption("**Summary statistics of the treatment and control group**")%>%
+  add_p()
+  
+table_2
+```
+
+
+```{r}
+# Stock of married people 
+
+states_map <- map_data("state")
+
+#Map of the USA 2010 
+us_map1 <- subset(data, year=="2010")
+names(us_map1)[names(us_map1) == "state"] <- "region"
+
+#Map of the USA 2017
+us_map2 <- subset(data, year=="2017")
+names(us_map2)[names(us_map2) == "state"] <- "region"
+
+
+#Calculate percentage change
+map_total_usa3 <- merge(us_map1, us_map2, by = "region", suffixes = c("_2010", "_2017"))
+map_total_usa3$married_pct_change <- ((map_total_usa3$married_2017 - map_total_usa3$married_2010)/map_total_usa3$married_2010)*100
+
+map_total_usa<- left_join(states_map, map_total_usa3, by= "region")
+
+
+#Creating the map
+map2<- ggplot(map_total_usa, aes(long, lat, group= group))+
+  geom_polygon(aes(fill=married_pct_change), color= "white")+ 
+  scale_fill_viridis_c()+ theme_bw()+theme(panel.border= element_blank(), panel.grid.major= element_blank(), panel.grid.minor=element_blank())+ labs(
+    title = "Percentage Change in Stock of Married People in United States between 2010 and 2017")
+map2
+
+
+```
+
+
+
+```{r}
+# Stock of divorced people 
+
+states_map <- map_data("state")
+
+#Map of the USA 2010 
+us_map3 <- subset(data, year=="2010")
+names(us_map3)[names(us_map3) == "state"] <- "region"
+
+#Map of the USA 2017
+us_map4 <- subset(data, year=="2017")
+names(us_map4)[names(us_map4) == "state"] <- "region"
+
+#Calculate percentage change
+map_total_usa5 <- merge(us_map3, us_map4, by = "region", suffixes = c("_2010", "_2017"))
+map_total_usa5$divorced_pct_change <- ((map_total_usa5$divorced_2017 - map_total_usa5$divorced_2010)/map_total_usa5$divorced_2010)*100
+
+map_total_usa6<- left_join(states_map, map_total_usa5, by= "region")
+
+
+#Creating the map
+map4<- ggplot(map_total_usa6, aes(long, lat, group= group))+
+  geom_polygon(aes(fill= divorced_pct_change), color= "white")+ 
+  scale_fill_viridis_c(option = "C")+ theme_bw()+theme(panel.border= element_blank(), panel.grid.major= element_blank(), panel.grid.minor=element_blank())+ labs(
+    title = "Percentage Change in Stock of Divorced People in United States between 2010 and 2017")
+map4
+
+```
+
+***2) Parallel trends ***
+```{r}
+#parallel trend marriage 
+palette1 = c("#CC79A7", "#009E73")
+parallel_trend_1<-ggplot(data, aes(year, married, group=treatment_,color=treatment_)) +
+  stat_summary(fun = mean, geom = 'line',aes(linetype =treatment_)) +
+  geom_vline(xintercept = 2015) +
+  theme_bw()+
+  labs( y = 'Stock of married people', 
+        x='Year',
+        title = 'Figure 3: Parallel trend of the stock of marriage') +
+   scale_color_manual(values= palette1)
+parallel_trend_1
+
+#parallel trend Divorced
+parallel_trend_2<-ggplot(data, aes(year, divorced, group=treatment_,color=treatment_)) +
+  stat_summary(fun = mean, geom = 'line',aes(linetype =treatment_)) +
+  geom_vline(xintercept = 2015) +
+  theme_bw()+
+  labs( y = 'Stock of divorced people', 
+        x='Year',
+        title = 'Figure 4: Parallel trend of the stock of divorced') +
+   scale_color_manual(values= palette1)
+parallel_trend_2
+```
+#Part 3: Difference-in-difference regression
+***Simple difference-in-difference regression***
+```{r}
+#regression diff in diff with treatment and post variable : MARRIED
+reg_did = lm(married ~ treatment + I(treatment*post) + post, data=data)
+
+#regression diff in diff with treatment and post variable : DIVORCED
+reg_did2 = lm(divorced ~ treatment + I(treatment*post) + post, data=data)
+
+```
+
+```{r}
+#creation of the table with the results of the regression
+ stargazer(reg_did, reg_did2, type = "latex",
+          title= "Difference in difference estimates",
+          omit=c("year","state"),
+          align=TRUE,
+          dep.var.labels=c("Stock of marriage", "Stock of divorce"),
+          no.space=TRUE)
+```
+
+
+***Difference-in-difference estimation using fixed effects***
+```{r}
+#regression diff in diff including using fixed effect: MARRIED
+reg_did31 = lm(married ~ I(treatment*post) + factor(year), data=data)
+reg_did32 = lm(married ~ I(treatment*post) + factor(state), data=data)
+reg_did33 = lm(married ~ I(treatment*post) + factor(year) + factor(state), data=data)
+
+
+reg_did41 = lm(divorced ~ I(treatment*post) + factor(year), data=data)
+reg_did42 = lm(divorced ~ I(treatment*post) + factor(state), data=data)
+reg_did44 = lm(divorced ~ I(treatment*post) + factor(year) + factor(state), data=data)
+```
+
+```{r}
+#creation of the table with the results of the regression
+ stargazer(reg_did31, reg_did32, reg_did33,type = "latex",
+          title= "Difference in difference estimates including fixed effects: Stock of marriage",
+          omit=c("year","state"),
+          align=TRUE,
+          dep.var.labels.include =FALSE,
+           column.labels   = c("Years FE", "States FE","Years and states FE"),
+          no.space=TRUE)
+```
+```{r}
+#creation of the table with the results of the regression
+ stargazer(reg_did41, reg_did42, reg_did44,type = "latex",
+          title= "Difference in difference estimates including fixed effects: Stock of divorce",
+          omit=c("year","state"),
+          align=TRUE,
+          dep.var.labels.include =FALSE,
+           column.labels   = c("Years FE", "States FE","Years and states FE"),
+          no.space=TRUE)
+```
+
+
+***Robustness test***
+```{r}
+#diff in diff low-income
+
+reg_did8= lm(married ~ treatment + I(treatment*married_ind_educ_h) + post, data=data)
+  
+reg_did9 =  lm(divorced ~ treatment + I(treatment*divorced_ind_educ_h) + post, data=data)
+```
+
+```{r}
+#creation of the table with the results of the regression
+ stargazer(reg_did8, reg_did9, type = "latex",
+          title= "Difference-in-difference estimates focusing on low-income individuals",
+          omit=c("year","state"),
+          align=TRUE,
+          dep.var.labels=c("Stock of marriage", "Stock of divorce"),
+          no.space=TRUE)
+```
+```{r}
+#diff in diff adding  controls
+reg_did7 = lm(married ~ I(treatment*post) + factor(year) + factor(state)+ ind_eth_b+ ind_eth_a + eco_empl, data=data)
+
+reg_did8= lm(divorced~ I(treatment*post) + factor(year) + factor(state)+ ind_eth_b+ ind_eth_a + eco_empl, data=data)
+
+```
+
+```{r}
+#creation of the table with the results of the regression
+ stargazer(reg_did7,reg_did8, type = "latex",
+          title= "Difference-in-difference estimates including fixed effects and controlls",
+          omit=c("year","state"),
+          align=TRUE,
+          dep.var.labels=c("Stock of marriage", "Stock of divorce"),
+          covariate.labels=c("Treatment*Post",
+            "Ehnicity: black or african american",
+                             "Ethnicity: asian",
+                            "Level of employment"),
+          no.space=TRUE)
+```
+
+
+
